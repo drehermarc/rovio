@@ -32,6 +32,7 @@
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <fstream>
 
 #include <cv_bridge/cv_bridge.h>
 #include <geometry_msgs/Pose.h>
@@ -146,6 +147,9 @@ class RovioNode{
   ros::Publisher pubMarkers_;          /**<Publisher: Ros line marker, indicating the depth uncertainty of a landmark.*/
   ros::Publisher pubExtrinsics_[mtState::nCam_];
   ros::Publisher pubImuBias_;
+  
+  std::ofstream pose_output_;
+  std::string pose_output_filename_;
 
   // Ros Messages
   geometry_msgs::TransformStamped transformMsg_;
@@ -628,6 +632,15 @@ class RovioNode{
     init_state_.state_ = FilterInitializationState::State::WaitForInitExternalPose;
   }
 
+    /** \brief Set filename for trajectory output
+   */
+  void setTrajectoryFilePath(std::string trajectory_filename){
+    pose_output_filename_ = trajectory_filename;
+    pose_output_.open(pose_output_filename_);
+    pose_output_ << "# timestamp tx ty tz qx qy qz qw" << std::endl;
+    pose_output_.close();
+  }
+
   /** \brief Executes the update step of the filter and publishes the updated data.
    */
   void updateAndPublish(){
@@ -668,6 +681,12 @@ class RovioNode{
         state.updateMultiCameraExtrinsics(&mpFilter_->multiCamera_);
         MXD& cov = mpFilter_->safe_.cov_;
         imuOutputCT_.transformState(state,imuOutput_);
+
+        // Save trajectory information
+        pose_output_.open(pose_output_filename_, std::ios_base::app);
+        pose_output_ << std::fixed<<mpFilter_->safe_.t_<< " " << imuOutput_.WrWB()(0) << " " << imuOutput_.WrWB()(1)<< " " << imuOutput_.WrWB()(2);
+        pose_output_ << std::fixed<<imuOutput_.qBW().x()<< " " << imuOutput_.qBW().y()<< " " << imuOutput_.qBW().z()<< " " <<-imuOutput_.qBW().w() << std::endl;
+        pose_output_.close();
 
         // Cout verbose for pose measurements
         if(mpImgUpdate_->verbose_){

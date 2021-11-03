@@ -147,6 +147,9 @@ int main(int argc, char** argv){
   std::cout << "Storing output to: " << rosbag_filename_out << std::endl;
   bagOut.open(rosbag_filename_out, rosbag::bagmode::Write);
 
+  // Set path for trajectory file
+  rovioNode.setTrajectoryFilePath(filename_out + "_stamped_trajectory.txt");
+
   // Copy info
   std::ifstream  src(filter_config, std::ios::binary);
   std::ofstream  dst(info_filename_out,   std::ios::binary);
